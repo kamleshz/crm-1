@@ -1,0 +1,47 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const frontendRoot = path.resolve(__dirname, '../../frontend/src');
+
+test('Client Master consent year choices extend through 2040', () => {
+  const constants = fs.readFileSync(path.join(frontendRoot, 'features/clientMaster/clientMaster.constants.js'), 'utf8');
+  assert.match(constants, /return `\$\{start\}-\$\{String\(\(start \+ 1\) % 100\)\.padStart\(2, '0'\)\}`/);
+});
+
+test('First Annual Return Year choices include every financial year through 2029-30', () => {
+  const utils = fs.readFileSync(path.join(frontendRoot, 'features/clientMaster/clientMaster.utils.js'), 'utf8');
+  assert.match(utils, /latestSelectableStart = Math\.max\(2029, latestStart\)/);
+  assert.match(utils, /formatFinancialYear\(latestSelectableStart - index\)/);
+});
+
+test('updating a follow-up closes the prior item and keeps closed history visible', () => {
+  const page = fs.readFileSync(path.join(frontendRoot, 'pages/LeadGeneration.jsx'), 'utf8');
+  assert.match(page, /status:\s*'closed'/);
+  assert.match(page, /closedAt:\s*new Date\(\)\.toISOString\(\)/);
+  assert.match(page, /followUpHistory:\s*\[\.\.\.previousCurrent,\s*\.\.\.\(Array\.isArray\(service\.followUpHistory\)/);
+  assert.match(page, /item\.status === 'closed' \? 'Follow up closed' : item\.reason/);
+  assert.match(page, /\.filter\(\(item\) => !item\.isCurrent \|\| !item\.scheduledDate \|\| item\.scheduledDate < todayKey\)/);
+});
+
+test('follow-up edit can explicitly close the reminder workflow', () => {
+  const page = fs.readFileSync(path.join(frontendRoot, 'pages/LeadGeneration.jsx'), 'utf8');
+  const controller = fs.readFileSync(path.resolve(__dirname, '../src/controllers/leadController.js'), 'utf8');
+  const reminders = fs.readFileSync(path.resolve(__dirname, '../src/services/leadWorkflowReminders.js'), 'utf8');
+  assert.match(page, />Follow-Up Close<\/button>/);
+  assert.match(page, /async function closeFollowUp\(\)/);
+  assert.match(page, /nextFollowUpDate:\s*''/);
+  assert.match(page, /followUpClosedAt:\s*closedAt/);
+  assert.match(page, /followUpCloseReason:\s*closedEntry\.reason/);
+  assert.match(page, /followUpClosedAt:\s*''/);
+  assert.match(controller, /followUpClosedAt:\s*String\(row\?\.followUpClosedAt/);
+  assert.match(reminders, /!service\.followUpClosedAt/);
+});
+
+test('Lead detail refreshes server state and calendar records keep stable service identity', () => {
+  const page = fs.readFileSync(path.join(frontendRoot, 'pages/LeadGeneration.jsx'), 'utf8');
+  assert.match(page, /api\.get\(API_ENDPOINTS\.leads\.list\)/);
+  assert.match(page, /assignedServiceId: selectedService\.assignedServiceId \|\| ''/);
+  assert.match(page, /leadCompanyName: activeLead\.company \|\| ''/);
+});

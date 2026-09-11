@@ -1,0 +1,20 @@
+{
+  "installCommand": "npm install",
+  "buildCommand": "echo \"Backend API deployment\"",
+  "crons": [
+    {
+      "path": "/api/internal/client-onboarding-reminders",
+      "schedule": "15 3 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/[...path].js"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/api/index.js"
+    }
+  ]
+}

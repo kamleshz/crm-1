@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>CRM</title>
+    <script>
+      (function () {
+        var ignoredMessages = [
+          'A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received',
+          'A listener indicated an asynchronous response by returning true, but the message channel closed before a response was received.'
+        ];
+
+        function getMessage(reason) {
+          if (!reason) return '';
+          return String(reason.message || reason);
+        }
+
+        function shouldIgnore(reason) {
+          var message = getMessage(reason);
+          return ignoredMessages.some(function (ignoredMessage) {
+            return message.indexOf(ignoredMessage) !== -1;
+          });
+        }
+
+        window.__CRM_SHOULD_IGNORE_BROWSER_NOISE__ = shouldIgnore;
+        window.addEventListener('unhandledrejection', function (event) {
+          if (shouldIgnore(event.reason)) {
+            event.preventDefault();
+          }
+        }, true);
+
+        window.addEventListener('error', function (event) {
+          var target = event.target;
+          var assetUrl = target && (target.src || target.href) || '';
+          if (!/\/assets\/index-[^/]+\.(?:css|js)(?:\?.*)?$/i.test(assetUrl)) return;
+          var retryKey = 'crm_asset_recovery_attempted';
+          if (sessionStorage.getItem(retryKey)) return;
+          sessionStorage.setItem(retryKey, '1');
+          var url = new URL(window.location.href);
+          url.searchParams.set('_asset_refresh', String(Date.now()));
+          window.location.replace(url.toString());
+        }, true);
+        window.setTimeout(function () {
+          sessionStorage.removeItem('crm_asset_recovery_attempted');
+        }, 15000);
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
